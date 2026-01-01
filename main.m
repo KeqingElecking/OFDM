@@ -4,9 +4,9 @@ clear; clc; close all;
 
 %% 1. Configuration
 N_fft = 64; N_cp = 32; 
-N_sym = 100000; % Increased symbols for smoother BER curves
+N_sym = 50000; % Increased symbols for smoother BER curves
 CellID = 2; M = 4;
-SNR_vec = 0:5:25; % Loop for BER Curve
+SNR_vec = 0:1:25; % Loop for BER Curve
 
 % Pre-allocate BER arrays
 BER_DL_SFBC = zeros(size(SNR_vec));
