@@ -4,7 +4,7 @@ clear; clc; close all;
 
 %% 1. Configuration
 N_fft = 64; N_cp = 32; 
-N_sym = 50000; % Increased symbols for smoother BER curves
+N_sym = 10000; % Increased symbols for smoother BER curves
 CellID = 2; M = 4;
 SNR_vec = 0:1:25; % Loop for BER Curve
 

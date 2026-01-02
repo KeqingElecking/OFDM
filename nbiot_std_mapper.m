@@ -1,44 +1,32 @@
 function [resource_grid, pilot_mask] = nbiot_std_mapper(bits, N_sym, CellID)
 % NBIOT_STD_MAPPER Maps bits using Standard NB-IoT Pilot Patterns (NRS)
-%
-% Inputs:
-%   bits    : Data bits (Column vector)
-%   N_sym   : Number of symbols (Usually 14 for 1 Subframe)
-%   CellID  : Physical Cell ID (Integer, determines pilot frequency shift)
-%
-% Outputs:
-%   resource_grid : 12 x N_sym complex grid
-%   pilot_mask    : Logical mask of pilot locations
+% Updated to support N_sym > 14 (Dynamic Pilot Calculation)
 
     %% 1. Setup
     N_subc = 12; 
     resource_grid = zeros(N_subc, N_sym);
     pilot_mask = false(N_subc, N_sym);
     
-    %% 2. Define Standard NRS Pilot Pattern
-    % Rules based on 3GPP TS 36.211 (Simplified for Simulation):
-    % 1. Pilots appear in the last 2 symbols of each slot.
-    %    (For a 14-symbol subframe, these are indices 6, 7, 13, 14).
-    % 2. Frequency separation is 6 subcarriers.
-    % 3. Vertical Shift (v_shift) depends on CellID.
+    %% 2. Define Standard NRS Pilot Pattern (DYNAMIC)
+    % Rules: Pilots appear in the last 2 symbols of each 7-symbol slot.
+    % Indices (0-based in slot): 5, 6
     
-    pilot_symbols = [6, 7, 13, 14]; % 1-based indices
-    v_shift = mod(CellID, 6);       % Shift can be 0 to 5
+    pilot_symbols = [];
+    for s = 1:N_sym
+        if mod(s-1, 7) == 5 || mod(s-1, 7) == 6
+            pilot_symbols = [pilot_symbols, s];
+        end
+    end
+    
+    v_shift = mod(CellID, 6);
     
     for s = 1:N_sym
         if ismember(s, pilot_symbols)
             % Determine pilot subcarriers for this symbol
             % Basic pattern: indices [1, 7] shifted by v_shift
+            p_subs = [1, 7] + v_shift;
             
-            % Create base indices (1-based)
-            p_subs = [1, 7]; 
-            
-            % Apply shift
-            p_subs = p_subs + v_shift;
-            
-            % Wrap around if shift pushes index beyond 12
-            % (Note: In real LTE, it's modulo, but since BW is fixed 12, 
-            % we wrap 13->1, 14->2, etc.)
+            % Wrap around
             p_subs(p_subs > 12) = p_subs(p_subs > 12) - 12;
             
             % Mark grid
@@ -47,8 +35,6 @@ function [resource_grid, pilot_mask] = nbiot_std_mapper(bits, N_sym, CellID)
     end
     
     %% 3. Insert Pilots
-    % Standard NRS pilots are complex values derived from CellID.
-    % For simulation, we use a robust QPSK-like pilot: (1+j)/sqrt(2)
     p_val = complex(1/sqrt(2), 1/sqrt(2));
     resource_grid(pilot_mask) = p_val;
     
@@ -65,6 +51,8 @@ function [resource_grid, pilot_mask] = nbiot_std_mapper(bits, N_sym, CellID)
     if length(bits) > max_bits
         bits = bits(1:max_bits);
     elseif length(bits) < max_bits
+        % If input is shorter, pad with random bits
+        % (This happens if capacity calc was wrong in script)
         padding = randi([0 1], max_bits - length(bits), 1);
         bits = [bits; padding];
     end
