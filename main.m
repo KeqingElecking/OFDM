@@ -3,14 +3,17 @@
 clear; clc; close all;
 
 %% 1. Configuration
-N_fft = 64; N_cp = 32; 
-N_sym = 10000; % Increased symbols for smoother BER curves
+N_fft = 64; N_cp = 16; 
+N_sym = 10000; 
 CellID = 2; M = 4;
-SNR_vec = 0:1:15; % Loop for BER Curve
+SNR_vec = 0:2:24; % Loop for BER Curve
 
 % Pre-allocate BER arrays
 BER_DL_SFBC = zeros(size(SNR_vec));
 BER_UL_MRC  = zeros(size(SNR_vec));
+
+% FIX: Master Seed for Frozen Channel Simulation
+MASTER_SEED = 676767; 
 
 disp('Running Simulation Loop (this may take a moment)...');
 
@@ -18,6 +21,12 @@ disp('Running Simulation Loop (this may take a moment)...');
 for i = 1:length(SNR_vec)
     snr = SNR_vec(i);
     fprintf('  Simulating SNR: %d dB...\n', snr);
+    
+    % --- FIX: RESET SEED HERE ---
+    % This ensures the fading dips happen at the EXACT same time/frequency 
+    % for every SNR point. Only the noise level changes.
+    rng(MASTER_SEED);
+    % ----------------------------
     
     % --- DOWNLINK (2 Tx -> 1 Rx, SFBC) ---
     [tx_bits_dl, ~] = gen_ofdm_data(12, N_sym, M, 1);
@@ -46,11 +55,12 @@ for i = 1:length(SNR_vec)
     len_ul = min(length(tx_bits_ul), length(rx_bits_ul));
     [~, BER_UL_MRC(i)] = biterr(tx_bits_ul(1:len_ul), rx_bits_ul(1:len_ul));
     
-    % Save data for plotting constellations at specific SNR (e.g., 15dB)
-    if snr == 15
+    % Save data for plotting constellations
+    % FIX: Check for 14dB because your loop (0:2:24) never hits 15
+    if snr == 14 
         saved_grid_dl = grid_eq_dl;
         saved_grid_ul = grid_eq_ul;
-        saved_H_dl = H_struct_dl.H11; % Just grab one path for visualization
+        saved_H_dl = H_struct_dl.H11; 
     end
 end
 
@@ -66,8 +76,8 @@ title('NB-IoT MIMO Performance Comparison');
 legend('Downlink (SFBC 2x1)', 'Uplink (MRC 1x2)');
 ylim([1e-5 1]);
 
-% Figure 2: Constellations at SNR = 15dB
-figure('Name', 'Constellation Diagrams (15dB)', 'Position', [750 100 800 400]);
+% Figure 2: Constellations at SNR = 14dB
+figure('Name', 'Constellation Diagrams (14dB)', 'Position', [750 100 800 400]);
 
 subplot(1,2,1);
 plot(saved_grid_dl(:), 'b.'); hold on;
@@ -86,7 +96,6 @@ axis([-2 2 -2 2]); axis square; grid on;
 legend('Rx Symbols', 'Ideal QPSK');
 
 % Figure 3: Channel Physics (One Path)
-% We reshape the 1D channel vector back to the grid to see time/freq fading
 [L_taps, n_syms_plotting] = size(saved_H_dl);
 H_freq_response = zeros(N_fft, n_syms_plotting);
 
@@ -100,22 +109,21 @@ H_freq_centered = fftshift(H_freq_response, 1);
 % Extract active subcarriers
 center_idx = floor((N_fft - 12)/2) + 1; 
 active_indices = center_idx : (center_idx + 11);
+
 H_active = H_freq_centered(active_indices, :);
 
-% --- FIX: Create Real Frequency Axis ---
+% --- Create Real Frequency Axis ---
 subcarrier_spacing = 15e3; % 15 kHz standard
 % Generate axis from -90 kHz to +90 kHz (centered at DC)
 freq_axis_khz = ((-6:5) * subcarrier_spacing) / 1000; 
 
 figure('Name', 'Channel Fading Profile', 'Position', [400 550 600 400]);
-
 % Pass freq_axis_khz as the Y variable to surf
 surf(1:n_syms_plotting, freq_axis_khz, abs(H_active)); 
-
 shading interp;
 title('Fading Channel Magnitude (Active Bandwidth)');
 xlabel('OFDM Symbol (Time)'); 
-ylabel('Frequency Offset (kHz)'); % Updated Label
+ylabel('Frequency Offset (kHz)'); 
 zlabel('Magnitude |H|');
 colorbar;
 view(-45, 30);
