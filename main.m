@@ -6,7 +6,7 @@ clear; clc; close all;
 N_fft = 64; N_cp = 32; 
 N_sym = 10000; % Increased symbols for smoother BER curves
 CellID = 2; M = 4;
-SNR_vec = 0:1:25; % Loop for BER Curve
+SNR_vec = 0:1:15; % Loop for BER Curve
 
 % Pre-allocate BER arrays
 BER_DL_SFBC = zeros(size(SNR_vec));
@@ -28,7 +28,7 @@ for i = 1:length(SNR_vec)
     
     [rx_dl, ~, H_struct_dl] = nbiot_mimo_channel(tx_w0, tx_w1, N_fft, N_cp, snr);
     
-    [rx_bits_dl, grid_eq_dl] = nbiot_dl_mimo_rx(rx_dl, N_fft, N_cp, N_sym, CellID);
+    [rx_bits_dl, grid_eq_dl] = nbiot_dl_mimo_rx(rx_dl, N_fft, N_cp, N_sym, CellID, snr);
     
     len_dl = min(length(tx_bits_dl), length(rx_bits_dl));
     [~, BER_DL_SFBC(i)] = biterr(tx_bits_dl(1:len_dl), rx_bits_dl(1:len_dl));
@@ -41,7 +41,7 @@ for i = 1:length(SNR_vec)
     % 1x2 Channel (Pass zeros for 2nd Tx antenna)
     [rx_ul_1, rx_ul_2, ~] = nbiot_mimo_channel(tx_w_ul, zeros(size(tx_w_ul)), N_fft, N_cp, snr);
     
-    [rx_bits_ul, grid_eq_ul] = nbiot_ul_mimo_rx(rx_ul_1, rx_ul_2, N_fft, N_cp, N_sym, M);
+    [rx_bits_ul, grid_eq_ul] = nbiot_ul_mimo_rx(rx_ul_1, rx_ul_2, N_fft, N_cp, N_sym, M, snr);
     
     len_ul = min(length(tx_bits_ul), length(rx_bits_ul));
     [~, BER_UL_MRC(i)] = biterr(tx_bits_ul(1:len_ul), rx_bits_ul(1:len_ul));
@@ -87,36 +87,35 @@ legend('Rx Symbols', 'Ideal QPSK');
 
 % Figure 3: Channel Physics (One Path)
 % We reshape the 1D channel vector back to the grid to see time/freq fading
-% The channel history 'saved_H_dl' contains the Impulse Response (Taps)
-% Dimensions: [L_taps x N_sym] (e.g., 6 x 100)
-% We must apply FFT to convert Taps -> Frequency Response
-
 [L_taps, n_syms_plotting] = size(saved_H_dl);
 H_freq_response = zeros(N_fft, n_syms_plotting);
 
 for s = 1:n_syms_plotting
     taps = saved_H_dl(:, s);
-    % FFT of taps gives the frequency response for that OFDM symbol
-    % We FFT to N_fft size (64) to see the full band
     H_freq_response(:, s) = fft(taps, N_fft); 
 end
 
-% Shift zero frequency to center to match our subcarrier mapping
 H_freq_centered = fftshift(H_freq_response, 1);
 
-% Extract only the 12 active subcarriers where our data lives
-% In Modulator: zeros_left = floor((64-12)/2) = 26. Start index = 27.
+% Extract active subcarriers
 center_idx = floor((N_fft - 12)/2) + 1; 
 active_indices = center_idx : (center_idx + 11);
-
 H_active = H_freq_centered(active_indices, :);
 
+% --- FIX: Create Real Frequency Axis ---
+subcarrier_spacing = 15e3; % 15 kHz standard
+% Generate axis from -90 kHz to +90 kHz (centered at DC)
+freq_axis_khz = ((-6:5) * subcarrier_spacing) / 1000; 
+
 figure('Name', 'Channel Fading Profile', 'Position', [400 550 600 400]);
-surf(1:n_syms_plotting, 1:12, abs(H_active)); 
+
+% Pass freq_axis_khz as the Y variable to surf
+surf(1:n_syms_plotting, freq_axis_khz, abs(H_active)); 
+
 shading interp;
-title('Fading Channel Magnitude (Active Subcarriers)');
+title('Fading Channel Magnitude (Active Bandwidth)');
 xlabel('OFDM Symbol (Time)'); 
-ylabel('Subcarrier Index (Freq)');
+ylabel('Frequency Offset (kHz)'); % Updated Label
 zlabel('Magnitude |H|');
 colorbar;
 view(-45, 30);

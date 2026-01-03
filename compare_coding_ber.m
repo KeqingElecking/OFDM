@@ -8,7 +8,7 @@ clear; clc; close all;
 N_fft = 64; N_cp = 16; 
 N_sym = 10000;       % Simulation Duration (Symbols)
 CellID = 2; M = 4;  % QPSK
-SNR_vec = 0:1:25;   % SNR Sweep
+SNR_vec = 0:1:10;   % SNR Sweep
 
 % Master Seed to freeze the physics
 MASTER_SEED = 1000; 

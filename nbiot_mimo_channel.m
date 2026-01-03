@@ -28,10 +28,10 @@ function [rx_wave_ant1, rx_wave_ant2, H_struct] = nbiot_mimo_channel(tx_wave_ant
     % then add the actual noise at the end.
     
     % Path Tx1 -> Rx1 (h11)
-    [y11, h11] = nbiot_sos_channel(tx_wave_ant1, N_fft, N_cp, 100);
+    [y11, h11] = nbiot_mcm_channel(tx_wave_ant1, N_fft, N_cp, 100);
     
     % Path Tx1 -> Rx2 (h21)
-    [y21, h21] = nbiot_sos_channel(tx_wave_ant1, N_fft, N_cp, 100);
+    [y21, h21] = nbiot_mcm_channel(tx_wave_ant1, N_fft, N_cp, 100);
     
     if IS_UPLINK_1x2
         % Only 1 Tx antenna active
@@ -39,10 +39,10 @@ function [rx_wave_ant1, rx_wave_ant2, H_struct] = nbiot_mimo_channel(tx_wave_ant
         y22 = zeros(size(y21)); h22 = zeros(size(h21));
     else
         % Path Tx2 -> Rx1 (h12)
-        [y12, h12] = nbiot_sos_channel(tx_wave_ant2, N_fft, N_cp, 100);
+        [y12, h12] = nbiot_mcm_channel(tx_wave_ant2, N_fft, N_cp, 100);
         
         % Path Tx2 -> Rx2 (h22)
-        [y22, h22] = nbiot_sos_channel(tx_wave_ant2, N_fft, N_cp, 100);
+        [y22, h22] = nbiot_mcm_channel(tx_wave_ant2, N_fft, N_cp, 100);
     end
     
     % 3. Superposition at Receiver (Signal Combining)
