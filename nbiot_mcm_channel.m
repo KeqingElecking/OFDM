@@ -21,7 +21,7 @@ function [rx_waveform, H_history] = nbiot_mcm_channel(tx_waveform, N_fft, N_cp, 
     
     % Sum-of-Sinusoids Parameters
     num_summations = 40; % As per your code
-    f_dmax = 91.0;       % Max Doppler Shift (Hz)
+    f_dmax = 150.0;       % Max Doppler Shift (Hz)
     
     % Time Parameters
     % Calculate symbol duration based on NB-IoT 15kHz spacing
